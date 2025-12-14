@@ -1,0 +1,8 @@
+{
+  "name": "Prisma IA",
+  "description": "Uma interface futurista para demonstrar modelos de IA usando a API Gemini, totalmente em Português.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

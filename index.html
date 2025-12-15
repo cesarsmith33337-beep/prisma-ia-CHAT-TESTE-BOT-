@@ -6,63 +6,51 @@
     <title>Prisma IA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-              logo: ['Outfit', 'sans-serif'],
+              sans: ['Inter', 'sans-serif'], // UI Geral (Google Studio vibe)
+              mono: ['JetBrains Mono', 'monospace'], // Código/Dados (Grok vibe)
+              display: ['Space Grotesk', 'sans-serif'], // Títulos
             },
             colors: {
               studio: {
-                base: '#050505',      
-                panel: '#0A0A0A',     
-                card: '#121212',      
-                border: 'var(--studio-border)',
-                text: '#E3E3E3',
-                muted: '#A8A8A8',
+                base: '#09090b',       // Zinco 950 - Fundo Principal
+                sidebar: '#0c0c0e',    // Fundo Sidebar
+                panel: '#121214',      // Painéis/Cards
+                surface: '#18181b',    // Superfícies Elevadas
+                border: 'rgba(255, 255, 255, 0.08)',
+                text: '#E4E4E7',       // Zinco 200
+                muted: '#71717A',      // Zinco 500
               },
               neon: {
-                primary: 'var(--neon-primary)', 
-                secondary: 'var(--neon-secondary)', 
-                glow: 'var(--neon-glow)',
+                primary: '#c084fc',    // Roxo Claro/Violeta
+                secondary: '#a855f7',  // Roxo Médio
+                accent: '#d8b4fe',     // Lilás
               }
             },
             boxShadow: {
-              'neon': '0 0 10px var(--neon-glow), 0 0 20px var(--neon-glow-secondary)',
-              'neon-strong': '0 0 15px var(--neon-primary), 0 0 30px var(--neon-secondary)',
-              'neon-border': '0 0 5px var(--neon-primary), inset 0 0 5px var(--neon-primary-low)',
+              'glow-sm': '0 0 10px rgba(192, 132, 252, 0.15)',
+              'glow-md': '0 0 20px rgba(168, 85, 247, 0.2)',
+              'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+            },
+            backgroundImage: {
+              'gradient-aurora': 'radial-gradient(circle at 50% -20%, rgba(88, 28, 135, 0.15), transparent 70%), radial-gradient(circle at 100% 50%, rgba(59, 7, 100, 0.05), transparent 50%)',
             },
             animation: {
-              'fade-in': 'fadeIn 0.3s ease-out',
-              'pulse-neon': 'pulseNeon 2s infinite',
-              'lightning': 'lightningFlash 4s infinite',
-              'aurora': 'auroraFlow 15s ease infinite alternate',
+              'fade-in': 'fadeIn 0.4s ease-out',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(5px)' },
+                '0%': { opacity: '0', transform: 'translateY(8px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              pulseNeon: {
-                '0%, 100%': { opacity: '1', boxShadow: '0 0 10px var(--neon-primary)' },
-                '50%': { opacity: '0.8', boxShadow: '0 0 20px var(--neon-primary)' },
-              },
-              lightningFlash: {
-                '0%, 90%, 100%': { opacity: '0' },
-                '92%': { opacity: '0.1' },
-                '93%': { opacity: '0' },
-                '94%': { opacity: '0.2' }, 
-                '96%': { opacity: '0' },
-              },
-              auroraFlow: {
-                '0%': { backgroundPosition: '0% 50%' },
-                '50%': { backgroundPosition: '100% 50%' },
-                '100%': { backgroundPosition: '0% 50%' },
               }
             }
           }
@@ -70,116 +58,36 @@
       }
     </script>
     <style>
-      :root {
-        /* Default Theme: Cyberpunk Purple (Dark/Black Base) */
-        --neon-primary: #D946EF;   /* Fuchsia */
-        --neon-primary-low: rgba(217, 70, 239, 0.2);
-        --neon-secondary: #8B5CF6; /* Violet */
-        --neon-glow: rgba(217, 70, 239, 0.3);
-        --neon-glow-secondary: rgba(139, 92, 246, 0.2);
-        --studio-border: #2A1B35;
-      }
-
-      .theme-storm {
-        /* Storm Theme: Purple Background with Matte Black Accents */
-        --neon-primary: #a855f7;   /* Roxo Neon Mais Claro */
-        --neon-primary-low: rgba(168, 85, 247, 0.3);
-        --neon-secondary: #2e1065; /* Dark Deep Purple */
-        --neon-glow: rgba(0, 0, 0, 0.8); 
-        --neon-glow-secondary: rgba(88, 28, 135, 0.6);
-        --studio-border: rgba(255, 255, 255, 0.15); 
-      }
-
-      .theme-aurora {
-        /* Aurora Theme: Teal/Green/Blue flow */
-        --neon-primary: #2DD4BF;   /* Teal 400 */
-        --neon-primary-low: rgba(45, 212, 191, 0.2);
-        --neon-secondary: #0EA5E9; /* Sky 500 */
-        --neon-glow: rgba(45, 212, 191, 0.4);
-        --neon-glow-secondary: rgba(14, 165, 233, 0.3);
-        --studio-border: #134e4a; /* Teal 900 */
-      }
-
-      .theme-stealth {
-        /* Stealth Mode: Matte Black & White/Gray - Minimalist */
-        --neon-primary: #ffffff;   /* Pure White */
-        --neon-primary-low: rgba(255, 255, 255, 0.1);
-        --neon-secondary: #525252; /* Neutral 600 */
-        --neon-glow: rgba(255, 255, 255, 0.05); /* Very subtle glow */
-        --neon-glow-secondary: rgba(0, 0, 0, 0);
-        --studio-border: #333333;
-      }
-
       body {
-        background-color: #020202;
-        color: #E3E3E3;
-        min-height: 100vh;
-        transition: background 0.5s ease;
+        background-color: #09090b;
+        color: #E4E4E7;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
+      
+      /* Scrollbar minimalista */
+      .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-      /* --- Backgrounds --- */
-
-      .bg-cyberpunk {
-        background-image: 
-          radial-gradient(circle at 50% -20%, rgba(120, 40, 200, 0.25), transparent 60%),
-          radial-gradient(circle at 0% 50%, rgba(60, 20, 100, 0.1), transparent 40%),
-          radial-gradient(circle at 100% 50%, rgba(60, 20, 100, 0.1), transparent 40%);
+      /* Utilitários de vidro */
+      .glass-panel {
+        background: rgba(18, 18, 20, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
       }
-
-      .bg-storm {
-        background-color: #1a0b2e;
-        background-image: 
-          linear-gradient(to bottom, #4c1d95 0%, #2e1065 60%, #020202 100%), 
-          radial-gradient(circle at 50% 0%, rgba(0,0,0,0.5), transparent 80%);
-        position: relative;
-        overflow: hidden;
+      
+      .glass-input {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: all 0.2s ease;
       }
-      .bg-storm::before {
-        content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        background: black; opacity: 0; pointer-events: none; z-index: 0;
-        animation: lightningFlashDark 8s infinite; mix-blend-mode: multiply;
+      .glass-input:focus {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(192, 132, 252, 0.4);
+        box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.1);
       }
-      .bg-storm::after {
-         content: ""; position: absolute; top: -50%; left: 50%; width: 3px; height: 100%;
-         background: linear-gradient(to bottom, transparent, #000, #333, transparent);
-         transform: rotate(15deg); opacity: 0; animation: lightningStrike 10s infinite linear;
-         filter: blur(1px); box-shadow: 0 0 20px rgba(0,0,0,1);
-      }
-
-      .bg-aurora {
-        background-color: #000000;
-        background: 
-          linear-gradient(125deg, #000000 0%, #0c1514 30%, #0f2e2a 60%, #020202 100%),
-          radial-gradient(at 0% 0%, rgba(45, 212, 191, 0.15) 0, transparent 50%), 
-          radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.15) 0, transparent 50%);
-        background-size: 200% 200%;
-        animation: auroraFlow 15s ease infinite alternate;
-      }
-
-      .bg-stealth {
-        background-color: #050505; /* Matte Black */
-        background-image: none;
-      }
-
-      /* Animations */
-      @keyframes lightningStrike {
-        0% { top: -100%; opacity: 0; }
-        15% { opacity: 0; } 18% { opacity: 0.8; } 19% { opacity: 0; }
-        20% { opacity: 0.6; } 21% { opacity: 0; } 100% { top: 100%; opacity: 0; }
-      }
-      @keyframes lightningFlashDark {
-        0%, 90%, 100% { opacity: 0; }
-        92% { opacity: 0.4; } 93% { opacity: 0; } 94% { opacity: 0.2; } 96% { opacity: 0; }
-      }
-      @keyframes auroraFlow {
-        0% { background-position: 0% 50%; }
-        100% { background-position: 100% 50%; }
-      }
-
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #0A0A0A; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: var(--neon-primary); }
     </style>
   <script type="importmap">
 {

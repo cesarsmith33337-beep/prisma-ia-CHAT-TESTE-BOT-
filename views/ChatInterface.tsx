@@ -1,34 +1,153 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SendIcon, ClearIcon, SaveIcon, HistoryIcon, TrashIcon, CloseIcon, WindIcon, LightningIcon, PaletteIcon, EditIcon, CheckIcon } from '../components/Icons';
+import { 
+    SendIcon, ClearIcon, SaveIcon, HistoryIcon, TrashIcon, CloseIcon, WindIcon, 
+    LightningIcon, EditIcon, CheckIcon, PlusIcon, VideoIcon, GlobeIcon, 
+    MicIcon, PaintIcon, MusicIcon, SparklesIcon, SettingsIcon, MagicIcon, ChatIcon, BookIcon,
+    CopyIcon, FileIcon, ImageIcon
+} from '../components/Icons';
 import { streamChatResponse } from '../services/gemini';
-import { Message, SavedSession, GroundingChunk } from '../types';
+import { Message, SavedSession, GroundingChunk, ViewType, Attachment } from '../types';
 import ReactMarkdown from 'react-markdown';
 
-type ChatMode = 'flash' | 'reasoning' | 'search';
+type ChatMode = 'flash' | 'reasoning' | 'search' | 'creative';
 
-export const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: 'Olá. Sou a Prisma IA. Escolha um modo abaixo e comece.' }
-  ]);
+interface ChatInterfaceProps {
+    onNavigate?: (view: ViewType) => void;
+}
+
+// Logo Component (Mini)
+const PrismaLogoSmall = () => (
+  <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 2L37.3205 12V32L20 42L2.67949 32V12L20 2Z" stroke="currentColor" strokeWidth="3" className="text-neon-primary drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+  </svg>
+);
+
+// BROWSER FRAME COMPONENT (Fully Functional Internal Browser)
+const BrowserFrame = ({ initialUrl }: { initialUrl: string }) => {
+    const [currentUrl, setCurrentUrl] = useState(initialUrl);
+    const [displayUrl, setDisplayUrl] = useState(initialUrl);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    useEffect(() => {
+        setCurrentUrl(initialUrl);
+        setDisplayUrl(initialUrl);
+    }, [initialUrl]);
+
+    // Função para abrir em popup sem restrições (Bypass X-Frame-Options)
+    const openUnrestricted = () => {
+        const width = 1200;
+        const height = 800;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+        window.open(
+            currentUrl, 
+            '_blank', 
+            `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${width},height=${height},top=${top},left=${left}`
+        );
+    };
+
+    const handleNavigate = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            let url = displayUrl;
+            if (!url.startsWith('http')) url = 'https://' + url;
+            setCurrentUrl(url);
+            setDisplayUrl(url); // Normalize display
+        }
+    };
+
+    return (
+        <div className="w-full h-[650px] flex flex-col rounded-xl overflow-hidden border border-studio-border bg-studio-panel shadow-2xl my-4 animate-fade-in ring-1 ring-white/5 group">
+            {/* Chrome-like Address Bar */}
+            <div className="bg-[#1e1e20] p-2 flex items-center gap-3 border-b border-white/5">
+                <div className="flex gap-1.5 ml-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 cursor-pointer" onClick={() => setCurrentUrl('about:blank')}></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 cursor-pointer"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 cursor-pointer" onClick={openUnrestricted}></div>
+                </div>
+                
+                {/* Navigation Controls */}
+                <div className="flex gap-2 text-white/40">
+                    <button className="hover:text-white transition"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+                    <button className="hover:text-white transition"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg></button>
+                    <button onClick={() => {iframeRef.current!.src = iframeRef.current!.src}} className="hover:text-white transition"><WindIcon /></button>
+                </div>
+
+                {/* URL Input */}
+                <div className="flex-1 bg-[#0f0f10] rounded-lg h-8 flex items-center px-3 mx-2 border border-white/5 focus-within:border-neon-primary/50 transition-colors">
+                    <div className="text-white/30 mr-2"><GlobeIcon /></div>
+                    <input 
+                        value={displayUrl} 
+                        onChange={(e) => setDisplayUrl(e.target.value)}
+                        onKeyDown={handleNavigate}
+                        className="bg-transparent text-xs text-white/90 w-full outline-none font-mono"
+                        placeholder="Digite uma URL (ex: google.com)..."
+                    />
+                </div>
+                
+                <button 
+                    onClick={openUnrestricted} 
+                    className="p-1.5 px-3 bg-neon-primary/10 hover:bg-neon-primary/20 text-neon-primary rounded text-[10px] font-bold uppercase tracking-wide transition border border-neon-primary/20"
+                    title="Abrir em Janela Externa (Sem Restrições)"
+                >
+                    Pop-up
+                </button>
+            </div>
+            
+            {/* Browser Content */}
+            <div className="flex-1 relative bg-white">
+                <iframe 
+                    ref={iframeRef}
+                    src={currentUrl} 
+                    className="w-full h-full border-none" 
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+                    allowFullScreen
+                    onError={() => console.log("Erro ao carregar iframe (X-Frame-Options)")}
+                />
+                
+                {/* Warning/Helper Overlay for blocked sites */}
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-studio-base/90 backdrop-blur text-center border-t border-white/10 flex justify-between items-center px-6">
+                    <p className="text-[10px] text-white/50">
+                        <span className="text-yellow-500 font-bold">Nota:</span> Se o site ficar branco (Google/Face/Bancos), use o modo Pop-up.
+                    </p>
+                    <button 
+                        onClick={openUnrestricted}
+                        className="flex items-center gap-2 text-xs font-bold text-white hover:text-neon-secondary transition"
+                    >
+                         Abrir Modo Sem Restrições <span className="text-lg">↗</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onNavigate }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>('flash');
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   
-  // States for Editing
+  // Attachments
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Feedback visual
+  const [micActive, setMicActive] = useState(false);
+
+  // Editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('prisma_chat_history');
     if (stored) {
         try { setSavedSessions(JSON.parse(stored)); } catch (e) { console.error("Failed to load history"); }
     }
-    setTimeout(scrollToBottom, 100);
   }, []);
 
   const scrollToBottom = () => {
@@ -40,17 +159,31 @@ export const ChatInterface: React.FC = () => {
   }, [messages, isLoading]);
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if ((!inputValue.trim() && !attachment) || isLoading) return;
 
-    const userMsg: Message = { role: 'user', text: inputValue };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsg: Message = { 
+        role: 'user', 
+        text: inputValue,
+        attachment: attachment || undefined
+    };
+
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInputValue('');
+    setAttachment(null); // Clear attachment after send
     setIsLoading(true);
 
+    // Garantir ID persistente
+    let activeSessionId = currentSessionId;
+    if (!activeSessionId) {
+        activeSessionId = Date.now().toString();
+        setCurrentSessionId(activeSessionId);
+    }
+
     try {
-      const history = messages.map(m => ({
+      const history = newMessages.map(m => ({
         role: m.role,
-        parts: [{ text: m.text }]
+        parts: [{ text: m.text }] 
       }));
 
       setMessages(prev => [...prev, { role: 'model', text: '' }]);
@@ -58,7 +191,9 @@ export const ChatInterface: React.FC = () => {
       let fullText = '';
       let allGroundingChunks: GroundingChunk[] = [];
 
-      const stream = streamChatResponse(history, userMsg.text, chatMode);
+      const apiMode = chatMode === 'creative' ? 'flash' : chatMode;
+      // Pass attachment to service
+      const stream = streamChatResponse(history, userMsg.text, apiMode as any, userMsg.attachment);
 
       for await (const chunk of stream) {
         if (chunk.text) fullText += chunk.text;
@@ -78,6 +213,9 @@ export const ChatInterface: React.FC = () => {
           return newHistory;
         });
       }
+      
+      saveSessionData(activeSessionId, newMessages, fullText);
+
     } catch (e) {
       setMessages(prev => [...prev, { role: 'model', text: 'Erro de conexão.', isError: true }]);
     } finally {
@@ -85,57 +223,88 @@ export const ChatInterface: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+          let type: 'image' | 'video' | 'audio' | 'text' | 'file' = 'text';
+          
+          if (file.type.startsWith('image/')) type = 'image';
+          else if (file.type.startsWith('video/')) type = 'video';
+          else if (file.type.startsWith('audio/')) type = 'audio';
+          else if (file.type.includes('zip') || file.type.includes('compressed') || file.name.endsWith('.zip') || file.name.endsWith('.rar') || file.type === 'application/pdf') {
+              type = 'file'; 
+          }
+          else type = 'text'; 
+
+          if (type === 'image' || type === 'video' || type === 'audio' || type === 'file') {
+             const base64Data = (reader.result as string).split(',')[1];
+             setAttachment({
+                 type: type,
+                 mimeType: file.type || (type === 'file' ? 'application/zip' : 'text/plain'),
+                 data: base64Data,
+                 name: file.name
+             });
+          } else {
+             const textReader = new FileReader();
+             textReader.onload = () => {
+                 setAttachment({
+                     type: 'text',
+                     mimeType: 'text/plain',
+                     data: textReader.result as string,
+                     name: file.name
+                 });
+             }
+             textReader.readAsText(file);
+          }
+      };
+      reader.readAsDataURL(file); 
+      e.target.value = ''; 
   };
 
-  // --- SAVE/LOAD HISTORY LOGIC ---
-  const handleSaveSession = () => {
-     if (messages.length <= 1) return;
-     
-     // Generate Title: First user message or generic
-     const firstUserMsg = messages.find(m => m.role === 'user');
-     const title = firstUserMsg ? firstUserMsg.text.slice(0, 40) + (firstUserMsg.text.length > 40 ? '...' : '') : 'Nova Conversa';
-     
-     // Generate Preview (Last Message)
-     const lastMsg = messages[messages.length - 1];
-     const preview = lastMsg.text.slice(0, 60) + '...';
+  const clearAttachment = () => setAttachment(null);
 
-     // Generate Summary (Detailed Context)
-     // Use first user message + start of model response for context
-     const firstModelMsg = messages.find(m => m.role === 'model' && m.text.length > 20);
-     const summaryContext = firstModelMsg 
-        ? `${firstUserMsg?.text.slice(0,50)}... -> ${firstModelMsg.text.slice(0, 100)}` 
-        : lastMsg.text.slice(0, 150);
+  const copyToClipboard = (text: string) => {
+      navigator.clipboard.writeText(text);
+  };
 
-     const newSession: SavedSession = {
-         id: currentSessionId || Date.now().toString(),
-         title: title, 
-         summary: summaryContext,
-         date: new Date().toISOString(), 
-         preview: preview, 
-         messages: [...messages]
-     };
+  const saveSessionData = (id: string, msgs: Message[], lastResponse: string) => {
+      const cleanText = (txt: string) => txt.replace(/[*_#`\[\]]/g, '').replace(/\s+/g, ' ').trim();
+      const firstUserMsg = msgs.find(m => m.role === 'user');
+      const defaultTitle = firstUserMsg ? cleanText(firstUserMsg.text).slice(0, 30) : 'Nova Conversa';
+      const previewText = cleanText(lastResponse).slice(0, 50) + (lastResponse.length > 50 ? '...' : '');
+      
+      const existingSession = savedSessions.find(s => s.id === id);
+      const title = existingSession?.title || defaultTitle; 
 
-     let updatedSessions;
-     if (currentSessionId) {
-         updatedSessions = savedSessions.map(s => s.id === currentSessionId ? newSession : s);
-     } else {
-         updatedSessions = [newSession, ...savedSessions];
-         setCurrentSessionId(newSession.id);
-     }
-     setSavedSessions(updatedSessions);
-     localStorage.setItem('prisma_chat_history', JSON.stringify(updatedSessions));
-     setShowHistory(true);
+      const newSession: SavedSession = {
+          id,
+          title,
+          summary: previewText,
+          date: new Date().toISOString(),
+          preview: previewText,
+          messages: [...msgs, {role: 'model', text: lastResponse}]
+      };
+
+      const updated = existingSession 
+        ? savedSessions.map(s => s.id === id ? newSession : s)
+        : [newSession, ...savedSessions];
+      
+      setSavedSessions(updated);
+      localStorage.setItem('prisma_chat_history', JSON.stringify(updated));
+  };
+
+  const handleNewChat = () => {
+      setMessages([]);
+      setCurrentSessionId(null);
+      setInputValue('');
   };
 
   const loadSession = (session: SavedSession) => {
       setMessages(session.messages);
       setCurrentSessionId(session.id);
-      setShowHistory(false);
   };
 
   const deleteSession = (e: React.MouseEvent, id: string) => {
@@ -146,8 +315,7 @@ export const ChatInterface: React.FC = () => {
       if (currentSessionId === id) handleNewChat();
   };
 
-  // --- EDITING LOGIC ---
-  const startEditing = (e: React.MouseEvent, session: SavedSession) => {
+   const startEditing = (e: React.MouseEvent, session: SavedSession) => {
       e.stopPropagation();
       setEditingSessionId(session.id);
       setEditingTitle(session.title);
@@ -156,228 +324,387 @@ export const ChatInterface: React.FC = () => {
   const saveTitle = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
       e.stopPropagation();
       if (!editingTitle.trim()) return;
-
       const updated = savedSessions.map(s => s.id === id ? { ...s, title: editingTitle } : s);
       setSavedSessions(updated);
       localStorage.setItem('prisma_chat_history', JSON.stringify(updated));
       setEditingSessionId(null);
   };
 
-  const handleEditKeyDown = (e: React.KeyboardEvent, id: string) => {
-      if (e.key === 'Enter') {
-          saveTitle(e, id);
-      }
-      if (e.key === 'Escape') {
-          setEditingSessionId(null);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleFeatureNotReady = (feature: string) => {
+      alert(`Funcionalidade: ${feature} está ativa (Demo).`);
+  };
+
+  const toggleMic = () => {
+      setMicActive(!micActive);
+      if (!micActive) {
+          setTimeout(() => setMicActive(false), 2000); 
       }
   };
 
-  const handleNewChat = () => {
-      setMessages([{ role: 'model', text: 'Olá. Sou a Prisma IA. Escolha um modo abaixo e comece.' }]);
-      setCurrentSessionId(null);
-      setInputValue('');
-  };
+  useEffect(() => {
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [inputValue]);
 
-  const formatDate = (isoString: string) => {
-      const date = new Date(isoString);
-      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date);
+  const DashboardCard = ({ icon, title, desc, onClick }: { icon: React.ReactNode, title: string, desc: string, onClick: () => void }) => (
+      <div onClick={onClick} className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 hover:border-neon-primary/50 hover:bg-white/10 hover:shadow-neon transition-all cursor-pointer flex flex-col gap-3 group h-full duration-300">
+          <div className="text-neon-primary group-hover:scale-110 transition-transform duration-300 w-fit drop-shadow-lg">
+              {icon}
+          </div>
+          <div>
+              <h3 className="text-white font-bold text-sm mb-1">{title}</h3>
+              <p className="text-xs text-white/60">{desc}</p>
+          </div>
+      </div>
+  );
+
+  // Helper to detect Browser Command
+  const renderMessageContent = (text: string) => {
+      // Regex detects :::BROWSER::url:::
+      const browserMatch = text.match(/:::BROWSER::(.*):::/);
+      
+      if (browserMatch && browserMatch[1]) {
+          const url = browserMatch[1];
+          const cleanText = text.replace(/:::BROWSER::.*:::/, '').trim();
+          
+          return (
+              <div className="w-full">
+                  <div className="mb-2 prose prose-invert prose-sm max-w-none prose-p:text-white/90">
+                      <ReactMarkdown>{cleanText}</ReactMarkdown>
+                  </div>
+                  <BrowserFrame initialUrl={url} />
+              </div>
+          );
+      }
+
+      return (
+        <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/90 prose-a:text-neon-primary">
+            <ReactMarkdown>{text}</ReactMarkdown>
+        </div>
+      );
   };
 
   return (
-    <div className="flex flex-col h-[85vh] bg-studio-card/80 backdrop-blur-xl rounded-3xl shadow-neon border border-studio-border overflow-hidden relative transition-all duration-500 hover:shadow-neon-strong group/chatbox">
-      
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-studio-border flex justify-between items-center bg-black/60 z-20 backdrop-blur-xl relative">
-        <div className="flex items-center gap-3">
-            <div className="relative">
-                <span className="absolute inset-0 bg-neon-primary rounded-full animate-ping opacity-75"></span>
-                <span className="relative block w-2 h-2 bg-neon-primary rounded-full shadow-[0_0_8px_var(--neon-primary)]"></span>
-            </div>
-            <span className="font-mono font-semibold text-white tracking-widest text-xs uppercase text-shadow-sm flex flex-col">
-                <span>{currentSessionId ? 'Memória Resgatada' : 'Sessão Ativa'}</span>
-                <span className="text-[9px] text-studio-muted leading-none mt-0.5">
-                    Mode: {chatMode === 'search' ? 'WEB HUNTER (Grok)' : chatMode === 'reasoning' ? 'DEEP REASON (o1)' : 'PRISMA FLASH'}
-                </span>
-            </span>
-        </div>
-        <div className="flex gap-2">
-            <button onClick={() => setShowHistory(!showHistory)} className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 ${showHistory ? 'bg-neon-primary text-white border-neon-primary shadow-neon' : 'text-studio-muted border-white/10 hover:text-white hover:border-neon-primary/50'}`}>
-                <HistoryIcon /> <span className="hidden sm:inline">Memória</span>
-            </button>
-            <button onClick={handleSaveSession} className="text-xs font-bold text-studio-muted hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-neon-secondary/50 hover:bg-neon-secondary/10 transition-all duration-300">
-                <SaveIcon /> <span className="hidden sm:inline">Salvar</span>
-            </button>
-            <button onClick={handleNewChat} className="text-xs font-bold text-studio-muted hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-neon-primary/50 hover:bg-neon-primary/10 transition-all duration-300">
-                <ClearIcon /> <span className="hidden sm:inline">Novo</span>
-            </button>
-        </div>
-      </div>
-
-      {/* Main Area */}
-      <div className="flex-1 relative overflow-hidden flex bg-black/20">
-          <div className="flex-1 overflow-y-auto px-6 pt-8 pb-32 space-y-6 custom-scrollbar scroll-smooth">
-            {messages.map((msg, idx) => (
-            <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                <div className={`flex flex-col gap-2 max-w-[85%] md:max-w-[75%]`}>
-                    <div 
-                    className={`px-6 py-4 rounded-2xl text-sm leading-relaxed backdrop-blur-md shadow-lg transition-all duration-300 ${
-                        msg.role === 'user' 
-                        ? 'bg-[#0f0f0f] border border-neon-primary/40 text-white font-medium rounded-br-sm shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-neon-border' 
-                        : 'bg-studio-panel/80 text-studio-text border border-white/5 rounded-bl-sm hover:border-white/10'
-                    }`}
-                    >
-                    {msg.role === 'model' ? (
-                        <div className="prose prose-sm prose-invert prose-p:text-gray-300 prose-headings:text-white prose-a:text-neon-primary prose-code:text-neon-secondary prose-code:bg-black/50 prose-code:px-1 prose-code:rounded max-w-none font-sans">
-                        <ReactMarkdown>{msg.text}</ReactMarkdown>
-                        </div>
-                    ) : (
-                        msg.text
-                    )}
-                    </div>
-                    {/* Sources / Grounding Display */}
-                    {msg.groundingChunks && msg.groundingChunks.length > 0 && (
-                        <div className="flex flex-wrap gap-2 ml-1">
-                            {msg.groundingChunks.map((chunk, i) => chunk.web?.uri && (
-                                <a key={i} href={chunk.web.uri} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-black/50 border border-white/10 px-2 py-1 rounded hover:bg-neon-secondary/20 hover:border-neon-secondary hover:text-white text-studio-muted transition-colors flex items-center gap-1">
-                                    <WindIcon /> {chunk.web.title || "Fonte Web"}
-                                </a>
-                            ))}
-                        </div>
-                    )}
+    <div className="flex h-full font-sans overflow-hidden">
+        
+        {/* SIDEBAR (History) - Glassmorphism */}
+        <aside className="w-[280px] bg-black/40 backdrop-blur-xl border-r border-white/10 flex flex-col shrink-0 z-20 transition-all duration-300">
+            {/* Header */}
+            <div className="p-5 flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-neon-primary to-neon-secondary rounded-lg shadow-neon">
+                    <PrismaLogoSmall />
+                </div>
+                <div>
+                    <h1 className="text-md font-bold text-white tracking-wide font-logo">Prisma IA</h1>
+                    <p className="text-[10px] text-neon-primary tracking-widest uppercase">Aurora OS</p>
                 </div>
             </div>
-            ))}
-            
-            {/* Typing Indicator */}
-            {isLoading && messages[messages.length - 1]?.text === '' && (
-            <div className="flex justify-start w-full animate-fade-in pl-1">
-                <div className="flex items-center gap-4 px-5 py-3 bg-studio-panel border border-neon-primary/40 shadow-[0_0_20px_rgba(217,70,239,0.15)] rounded-2xl rounded-bl-none backdrop-blur-md">
-                    <div className="flex gap-1.5 items-center">
-                        <div className="w-2 h-2 bg-neon-primary rounded-full animate-[pulse_1.5s_ease-in-out_infinite] shadow-[0_0_10px_#D946EF]"></div>
-                        <div className="w-2 h-2 bg-white rounded-full animate-[pulse_1.5s_ease-in-out_infinite_200ms] shadow-[0_0_10px_#FFFFFF]"></div>
-                        <div className="w-2 h-2 bg-neon-secondary rounded-full animate-[pulse_1.5s_ease-in-out_infinite_400ms] shadow-[0_0_10px_#8B5CF6]"></div>
+
+            {/* New Chat Button */}
+            <div className="px-4 mb-6">
+                <button 
+                    onClick={handleNewChat}
+                    className="w-full flex items-center gap-2 bg-gradient-to-r from-neon-primary to-neon-secondary hover:brightness-110 text-white py-3 px-4 rounded-full font-bold text-sm transition-all shadow-neon"
+                >
+                    <PlusIcon /> Nova conversa
+                </button>
+            </div>
+
+            {/* History List */}
+            <div className="flex-1 overflow-y-auto px-4 space-y-4 custom-scrollbar">
+                <div>
+                    <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 pl-2">Memória Recente</h3>
+                    <div className="space-y-1">
+                        {savedSessions.length === 0 && (
+                            <p className="text-xs text-white/30 italic pl-2">Nenhuma memória salva.</p>
+                        )}
+                        {savedSessions.map((session) => (
+                            <div 
+                                key={session.id} 
+                                onClick={() => loadSession(session)}
+                                className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border border-transparent ${currentSessionId === session.id ? 'bg-white/10 border-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <div className="flex items-center gap-3 overflow-hidden flex-1">
+                                    <div className={`shrink-0 ${currentSessionId === session.id ? 'text-neon-primary' : 'text-white/40'}`}><ChatIcon /></div>
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                        {editingSessionId === session.id ? (
+                                            <input 
+                                                value={editingTitle} 
+                                                onChange={e => setEditingTitle(e.target.value)}
+                                                onClick={e => e.stopPropagation()}
+                                                onKeyDown={e => { if(e.key==='Enter') saveTitle(e, session.id) }}
+                                                className="bg-transparent border-b border-neon-primary outline-none text-xs w-full text-white"
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <span className="text-sm truncate font-medium">{session.title}</span>
+                                        )}
+                                        <span className="text-[10px] text-white/40 truncate block opacity-70">
+                                            {session.preview || "Sem resumo"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className={`flex items-center gap-1 ml-2 ${editingSessionId === session.id ? 'flex' : 'hidden group-hover:flex'}`}>
+                                    {editingSessionId === session.id ? (
+                                        <button onClick={e => saveTitle(e, session.id)} className="text-green-400 hover:text-green-300 p-1"><CheckIcon /></button>
+                                    ) : (
+                                        <button onClick={e => startEditing(e, session)} className="p-1 hover:text-white hover:bg-white/10 rounded"><EditIcon /></button>
+                                    )}
+                                    <button onClick={e => deleteSession(e, session.id)} className="p-1 hover:text-red-400 hover:bg-red-500/10 rounded"><TrashIcon /></button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <span className="text-xs font-mono text-neon-primary font-bold uppercase tracking-[0.2em] animate-pulse drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
-                    {chatMode === 'search' ? 'Pesquisando...' : chatMode === 'reasoning' ? 'Raciocinando...' : 'Digitando...'}
-                    </span>
                 </div>
             </div>
-            )}
-            <div ref={messagesEndRef} className="h-4" />
-          </div>
 
-          {/* History Sidebar */}
-          <div className={`absolute inset-y-0 right-0 w-80 bg-[#050505] border-l border-studio-border transform transition-transform duration-300 z-30 shadow-2xl ${showHistory ? 'translate-x-0' : 'translate-x-full'}`}>
-              <div className="p-4 border-b border-studio-border flex justify-between items-center bg-black/40">
-                  <span className="text-xs font-bold text-neon-secondary uppercase tracking-widest flex items-center gap-2">
-                      <HistoryIcon /> Memória Neural
-                  </span>
-                  <button onClick={() => setShowHistory(false)} className="text-studio-muted hover:text-white transition">
-                      <CloseIcon />
-                  </button>
-              </div>
-              <div className="overflow-y-auto h-full pb-20 p-2 custom-scrollbar">
-                  {savedSessions.length === 0 ? (
-                      <div className="text-center text-studio-muted text-xs p-8 opacity-50 italic">Nenhuma memória salva.</div>
-                  ) : (
-                      <div className="space-y-2">
-                          {savedSessions.map((session) => (
-                              <div key={session.id} onClick={() => loadSession(session)} className={`p-3 rounded-xl border cursor-pointer transition-all duration-200 group relative ${currentSessionId === session.id ? 'bg-neon-primary/10 border-neon-primary/50' : 'bg-studio-panel border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
-                                  
-                                  {/* Header: Date + Actions */}
-                                  <div className="flex justify-between items-center mb-1.5 opacity-60">
-                                      <span className="text-[9px] font-mono text-studio-muted">{formatDate(session.date)}</span>
-                                      <div className="flex gap-1">
-                                          {editingSessionId !== session.id && (
-                                              <button onClick={(e) => startEditing(e, session)} className="text-studio-muted hover:text-white transition p-1 hover:bg-white/10 rounded" title="Editar Título">
-                                                  <EditIcon />
-                                              </button>
-                                          )}
-                                          <button onClick={(e) => deleteSession(e, session.id)} className="text-studio-muted hover:text-red-500 transition p-1 hover:bg-red-500/10 rounded" title="Apagar">
-                                              <TrashIcon />
-                                          </button>
-                                      </div>
-                                  </div>
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 bg-black/20">
+                <button 
+                    onClick={() => { if(confirm('Apagar todo o histórico?')) { setSavedSessions([]); localStorage.removeItem('prisma_chat_history'); handleNewChat(); }}}
+                    className="flex items-center gap-2 text-white/50 hover:text-red-400 text-sm w-full p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                >
+                    <TrashIcon /> Limpar histórico
+                </button>
+            </div>
+        </aside>
 
-                                  {/* Title (Editable) */}
-                                  {editingSessionId === session.id ? (
-                                      <div className="flex items-center gap-1 mb-2 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                                          <input 
-                                              type="text" 
-                                              value={editingTitle} 
-                                              onChange={(e) => setEditingTitle(e.target.value)}
-                                              onKeyDown={(e) => handleEditKeyDown(e, session.id)}
-                                              autoFocus
-                                              className="w-full bg-black border border-neon-primary rounded px-2 py-1 text-xs text-white outline-none"
-                                          />
-                                          <button onClick={(e) => saveTitle(e, session.id)} className="text-green-500 hover:text-green-400 p-1"><CheckIcon /></button>
-                                      </div>
-                                  ) : (
-                                      <h4 className="text-sm font-bold text-white mb-1.5 line-clamp-1">{session.title}</h4>
-                                  )}
+        {/* MAIN AREA */}
+        <main className="flex-1 flex flex-col relative bg-transparent z-10">
+            {/* Top Navigation - Transparent Glass */}
+            <header className="h-16 flex items-center justify-between px-6 border-b border-white/10 bg-black/20 backdrop-blur-md">
+                <div className="flex items-center gap-2 bg-black/30 p-1 rounded-full border border-white/5 overflow-x-auto">
+                    <button onClick={() => setChatMode('flash')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${chatMode === 'flash' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
+                        <span className="flex items-center gap-1"><LightningIcon /> Prisma Flash</span>
+                    </button>
+                    <button onClick={() => setChatMode('reasoning')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${chatMode === 'reasoning' ? 'bg-neon-secondary text-white shadow-neon' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
+                        <span className="flex items-center gap-1"><span className="text-lg leading-none">🧠</span> Raciocínio</span>
+                    </button>
+                    <button onClick={() => setChatMode('search')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${chatMode === 'search' ? 'bg-neon-primary text-white shadow-neon' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
+                        <span className="flex items-center gap-1"><GlobeIcon /> Web</span>
+                    </button>
+                    <button onClick={() => setChatMode('creative')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${chatMode === 'creative' ? 'bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
+                        <span className="flex items-center gap-1"><SparklesIcon /> Criativo</span>
+                    </button>
+                </div>
+                <div className="flex items-center gap-3 text-white/70">
+                    <button onClick={() => handleFeatureNotReady('Magic Enhance')} className="p-2 hover:text-white hover:bg-white/10 rounded-full transition"><MagicIcon /></button>
+                    <button onClick={() => handleFeatureNotReady('Settings')} className="p-2 hover:text-white hover:bg-white/10 rounded-full transition"><SettingsIcon /></button>
+                </div>
+            </header>
 
-                                  {/* Summary / Preview */}
-                                  <div className="text-[10px] text-studio-muted border-t border-white/5 pt-2 mt-1">
-                                      <p className="line-clamp-3 leading-relaxed">
-                                        {session.summary || session.preview}
-                                      </p>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  )}
-              </div>
-          </div>
-      </div>
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                
+                {/* ZERO STATE DASHBOARD */}
+                {messages.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center p-8 animate-fade-in">
+                        <div className="mb-12 text-center">
+                            <h2 className="text-4xl font-bold text-white mb-3 text-shadow-neon tracking-tight">Aurora OS</h2>
+                            <p className="text-white/60 text-lg font-light">Seu sistema operacional de Inteligência Artificial.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl w-full">
+                            <DashboardCard 
+                                icon={<LightningIcon />} 
+                                title="Executar Apps" 
+                                desc='"Abra o Youtube", "Acesse a Pocket Option"...'
+                                onClick={() => setChatMode('flash')}
+                            />
+                            <DashboardCard 
+                                icon={<BookIcon />} 
+                                title="E-book Studio" 
+                                desc="Crie livros com imagens e áudio"
+                                onClick={() => onNavigate?.(ViewType.EBOOK_CREATOR)}
+                            />
+                            <DashboardCard 
+                                icon={<PaintIcon />} 
+                                title="Geração de Imagens" 
+                                desc="Crie arte digital"
+                                onClick={() => onNavigate?.(ViewType.IMAGE_GENERATION)}
+                            />
+                            <DashboardCard 
+                                icon={<MusicIcon />} 
+                                title="Criação de Música" 
+                                desc="Gere áudio e voz"
+                                onClick={() => onNavigate?.(ViewType.AUDIO_ANALYSIS)}
+                            />
+                            <DashboardCard 
+                                icon={<VideoIcon />} 
+                                title="Análise de Vídeo" 
+                                desc="Visão computacional"
+                                onClick={() => onNavigate?.(ViewType.IMAGE_ANALYSIS)}
+                            />
+                            <DashboardCard 
+                                icon={<MicIcon />} 
+                                title="Clonagem de Voz" 
+                                desc="Converta texto em fala"
+                                onClick={() => onNavigate?.(ViewType.AUDIO_ANALYSIS)}
+                            />
+                        </div>
+                    </div>
+                )}
 
-      {/* Input Area with Model Selector */}
-      <div className="p-4 bg-studio-card/80 border-t border-studio-border backdrop-blur-md z-20 flex flex-col gap-2">
-        {/* Model Selector Pills */}
-        <div className="flex justify-center gap-2 mb-1">
-            <button 
-                onClick={() => setChatMode('flash')}
-                className={`text-[10px] px-3 py-1 rounded-full border uppercase tracking-wider font-bold transition-all ${chatMode === 'flash' ? 'bg-white text-black border-white' : 'bg-transparent text-studio-muted border-white/10 hover:border-white/30'}`}
-            >
-                ⚡ Prisma Flash
-            </button>
-            <button 
-                onClick={() => setChatMode('reasoning')}
-                className={`text-[10px] px-3 py-1 rounded-full border uppercase tracking-wider font-bold transition-all ${chatMode === 'reasoning' ? 'bg-neon-secondary text-white border-neon-secondary shadow-neon' : 'bg-transparent text-studio-muted border-white/10 hover:border-neon-secondary/50'}`}
-            >
-                🧠 Deep Reason
-            </button>
-            <button 
-                onClick={() => setChatMode('search')}
-                className={`text-[10px] px-3 py-1 rounded-full border uppercase tracking-wider font-bold transition-all ${chatMode === 'search' ? 'bg-neon-primary text-white border-neon-primary shadow-neon' : 'bg-transparent text-studio-muted border-white/10 hover:border-neon-primary/50'}`}
-            >
-                🌐 Web Hunter
-            </button>
-        </div>
+                {/* MESSAGES LIST */}
+                {messages.length > 0 && (
+                    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6 pb-32">
+                        {messages.map((msg, idx) => (
+                            <div key={idx} className={`flex gap-4 animate-fade-in ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                {msg.role === 'model' && (
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-primary to-neon-secondary flex items-center justify-center text-white font-bold shrink-0 mt-1 shadow-neon text-xs">
+                                        AI
+                                    </div>
+                                )}
+                                <div className={`max-w-[80%] rounded-2xl px-6 py-4 text-sm leading-relaxed backdrop-blur-md shadow-lg group relative ${
+                                    msg.role === 'user' 
+                                    ? 'bg-white/10 border border-white/20 text-white rounded-br-none' 
+                                    : 'bg-black/40 border border-white/5 text-white/90 w-full'
+                                }`}>
+                                    
+                                    {/* Attachment Preview in Message */}
+                                    {msg.attachment && (
+                                        <div className="mb-3 rounded-xl overflow-hidden border border-white/10 bg-black/50 max-w-sm">
+                                            {msg.attachment.type === 'image' && (
+                                                <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="Anexo" className="w-full h-auto" />
+                                            )}
+                                            {msg.attachment.type === 'text' && (
+                                                <div className="p-3 font-mono text-xs text-white/70 bg-black/80 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                                    {msg.attachment.data.slice(0, 500)}{msg.attachment.data.length > 500 && '...'}
+                                                </div>
+                                            )}
+                                            {/* ZIP / FILE PREVIEW IN MESSAGE BUBBLE */}
+                                            {msg.attachment.type === 'file' && (
+                                                <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10">
+                                                    <div className="p-2 bg-yellow-500/20 text-yellow-500 rounded-lg"><FileIcon /></div>
+                                                    <div>
+                                                        <p className="font-bold text-xs text-white truncate max-w-[200px]">{msg.attachment.name}</p>
+                                                        <p className="text-[10px] text-white/50 uppercase">Arquivo Anexado</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                             {(msg.attachment.type !== 'file' && msg.attachment.type !== 'text') && (
+                                                 <div className="p-2 text-[10px] text-white/50 bg-black/80 border-t border-white/10 flex items-center gap-2">
+                                                     {msg.attachment.type === 'image' ? <ImageIcon /> : <FileIcon />}
+                                                     {msg.attachment.name}
+                                                 </div>
+                                             )}
+                                        </div>
+                                    )}
 
-        <div className="max-w-4xl mx-auto w-full relative flex items-end gap-2 bg-[#050505] border border-white/10 rounded-[24px] px-2 py-2 focus-within:ring-1 focus-within:ring-neon-primary/50 focus-within:shadow-[0_0_20px_rgba(217,70,239,0.2)] focus-within:border-neon-primary/50 transition-all duration-300">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Digite seu comando para ${chatMode === 'search' ? 'pesquisar na web...' : 'o modelo...'}`}
-            className="w-full max-h-32 min-h-[44px] bg-transparent border-none focus:ring-0 outline-none text-white placeholder-studio-muted resize-none py-2.5 px-4 text-sm font-medium custom-scrollbar"
-            rows={1}
-            style={{ height: 'auto' }}
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !inputValue.trim()}
-            className={`p-2.5 rounded-full mb-0.5 transition-all duration-300 group ${
-              isLoading || !inputValue.trim()
-                ? 'bg-transparent text-studio-border'
-                : 'bg-white text-black hover:bg-neon-primary hover:text-white hover:shadow-neon hover:scale-105 active:scale-95'
-            }`}
-          >
-            <SendIcon />
-          </button>
-        </div>
-      </div>
+                                    {msg.role === 'model' ? renderMessageContent(msg.text) : msg.text}
+                                    
+                                    {msg.groundingChunks && msg.groundingChunks.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-white/10">
+                                            {msg.groundingChunks.map((chunk, i) => chunk.web?.uri && (
+                                                <a key={i} href={chunk.web.uri} target="_blank" rel="noopener noreferrer" className="text-xs bg-black/40 border border-white/10 px-2 py-1 rounded text-neon-secondary hover:underline flex items-center gap-1 hover:bg-white/10 transition">
+                                                    <GlobeIcon /> {chunk.web.title}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Copy Button (Model Only) */}
+                                    {msg.role === 'model' && (
+                                        <button 
+                                            onClick={() => copyToClipboard(msg.text)}
+                                            className="absolute -bottom-6 right-0 p-1.5 text-white/30 hover:text-neon-primary transition opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px]"
+                                            title="Copiar Resposta"
+                                        >
+                                            <CopyIcon /> Copiar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                         {isLoading && (
+                            <div className="flex gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-neon-primary/20 flex items-center justify-center text-neon-primary font-bold shrink-0 mt-1 animate-pulse">AI</div>
+                                <div className="flex items-center gap-1 h-8 px-4 bg-white/5 rounded-full border border-white/5">
+                                    <div className="w-1.5 h-1.5 bg-neon-primary rounded-full animate-bounce"></div>
+                                    <div className="w-1.5 h-1.5 bg-neon-secondary rounded-full animate-bounce delay-100"></div>
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce delay-200"></div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+                )}
+            </div>
+
+            {/* BOTTOM INPUT AREA - Floating Glass */}
+            <div className="absolute bottom-6 left-0 right-0 px-4 z-20">
+                <div className="max-w-3xl mx-auto">
+                    {/* Attachment Preview (Staged) */}
+                    {attachment && (
+                        <div className="mb-2 bg-black/80 backdrop-blur-md rounded-xl p-2 border border-neon-primary/50 inline-flex items-center gap-3 animate-fade-in shadow-lg relative">
+                             {attachment.type === 'image' ? (
+                                 <img src={`data:${attachment.mimeType};base64,${attachment.data}`} className="w-10 h-10 rounded object-cover" alt="Preview" />
+                             ) : attachment.type === 'file' ? (
+                                 <div className="w-10 h-10 bg-yellow-500/20 text-yellow-500 rounded flex items-center justify-center"><FileIcon /></div>
+                             ) : (
+                                 <div className="w-10 h-10 bg-white/10 rounded flex items-center justify-center text-white"><FileIcon /></div>
+                             )}
+                             <div className="max-w-[200px]">
+                                 <p className="text-xs text-white truncate">{attachment.name}</p>
+                                 <p className="text-[10px] text-white/50 uppercase">{attachment.type === 'file' ? 'Arquivo/ZIP' : attachment.type}</p>
+                             </div>
+                             <button onClick={clearAttachment} className="p-1 hover:bg-white/20 rounded-full text-white/70 hover:text-white ml-2"><CloseIcon /></button>
+                        </div>
+                    )}
+
+                    <div className="bg-black/60 backdrop-blur-xl rounded-[24px] p-2 pl-4 flex items-end gap-2 border border-white/10 focus-within:border-neon-primary/50 focus-within:ring-1 focus-within:ring-neon-primary/50 transition-all shadow-2xl relative">
+                        <button onClick={() => fileInputRef.current?.click()} className="p-2.5 text-white/50 hover:text-white rounded-xl hover:bg-white/10 transition mb-0.5">
+                            <PlusIcon />
+                        </button>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            onChange={handleFileUpload} 
+                            accept="image/*,video/*,audio/*,.pdf,.txt,.js,.json,.html,.zip,.rar,.7z" // Broad acceptance + archives
+                        />
+                        <textarea
+                            ref={textareaRef}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Pergunte algo ou execute um app... (Shift+Enter para pular)"
+                            className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 resize-none max-h-32 py-3.5 custom-scrollbar font-medium"
+                            rows={1}
+                        />
+                        <button 
+                            onClick={toggleMic} 
+                            className={`p-2.5 rounded-xl hover:bg-white/10 transition mb-0.5 ${micActive ? 'text-red-500 animate-pulse bg-red-500/10' : 'text-white/50 hover:text-white'}`}
+                        >
+                            <MicIcon />
+                        </button>
+                        <button 
+                            onClick={handleSend}
+                            disabled={(!inputValue.trim() && !attachment) || isLoading}
+                            className={`p-3 rounded-xl mb-0.5 transition-all duration-300 ${
+                                (inputValue.trim() || attachment)
+                                ? 'bg-gradient-to-r from-neon-primary to-neon-secondary text-white shadow-neon hover:scale-105 active:scale-95' 
+                                : 'bg-white/5 text-white/20 cursor-not-allowed'
+                            }`}
+                        >
+                            <SendIcon />
+                        </button>
+                    </div>
+                    <p className="text-center text-[10px] text-white/30 mt-3 font-medium tracking-wide">
+                        Prisma Aurora OS. Acesso total concedido.
+                    </p>
+                </div>
+            </div>
+        </main>
     </div>
   );
 };

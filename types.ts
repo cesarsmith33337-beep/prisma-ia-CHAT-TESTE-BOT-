@@ -5,7 +5,8 @@ export enum ViewType {
   IMAGE_ANALYSIS = 'IMAGE_ANALYSIS',
   IMAGE_GENERATION = 'IMAGE_GENERATION',
   AUDIO_ANALYSIS = 'AUDIO_ANALYSIS',
-  TEXT_SUMMARY = 'TEXT_SUMMARY'
+  TEXT_SUMMARY = 'TEXT_SUMMARY',
+  EBOOK_CREATOR = 'EBOOK_CREATOR'
 }
 
 export interface GroundingChunk {
@@ -15,12 +16,19 @@ export interface GroundingChunk {
   };
 }
 
+export interface Attachment {
+  type: 'image' | 'video' | 'audio' | 'text' | 'file'; // Adicionado 'file' para ZIPs/PDFs
+  data: string; // Base64 ou texto puro
+  mimeType: string;
+  name: string;
+}
+
 export interface Message {
   role: 'user' | 'model';
   text: string;
-  image?: string;
+  attachment?: Attachment; // Novo campo para anexo
   isError?: boolean;
-  groundingChunks?: GroundingChunk[]; // Suporte a fontes da web
+  groundingChunks?: GroundingChunk[];
 }
 
 export interface ChatSession {
@@ -31,8 +39,8 @@ export interface ChatSession {
 export interface SavedSession {
   id: string;
   title: string;
-  summary?: string; // Novo campo para resumo detalhado
-  date: string; // ISO String
+  summary?: string; 
+  date: string; 
   preview: string;
   messages: Message[];
 }
@@ -44,18 +52,42 @@ export interface DemoConfig {
   icon: React.ReactNode;
 }
 
-// Novos tipos para o Estúdio de Voz (SVC)
 export interface VoiceModel {
   id: string;
   name: string;
-  sourceAudio: string; // Base64 do áudio de treino
+  sourceAudio: string; 
   dateCreated: string;
-  epochs: number; // Simulado para UX
+  epochs: number; 
+  genre?: string; 
 }
 
 export interface SynthesisParams {
-  pitch: number;      // -12 a +12 semitons
-  breathiness: number; // 0 a 100
-  reverb: number;     // 0 a 100
-  similarity: number; // 0 a 100
+  pitch: number;      
+  breathiness: number;
+  reverb: number;     
+  similarity: number; 
+  speed: number;      
+}
+
+export interface SongComposition {
+    title: string;
+    style: string;
+    lyrics: string;
+    chords: string; 
+    structure: string; 
+    vibeDescription: string;
+}
+
+export interface EbookPage {
+  pageNumber: number;
+  text: string;
+  imagePrompt: string;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+}
+
+export interface EbookProject {
+  title: string;
+  topic: string;
+  pages: EbookPage[];
 }

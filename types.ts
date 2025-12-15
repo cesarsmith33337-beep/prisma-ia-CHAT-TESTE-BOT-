@@ -91,3 +91,7 @@ export interface EbookProject {
   topic: string;
   pages: EbookPage[];
 }
+
+export interface ScreenCaptureHandle {
+  captureFrame: () => string | null;
+}

@@ -75,7 +75,7 @@ const ViewWrapper: React.FC<{ children: React.ReactNode, onBack: () => void, tit
              </div>
              <div className="flex items-center gap-2">
                  <div className="h-2 w-2 rounded-full bg-neon-primary animate-pulse"></div>
-                 <div className="text-[10px] text-studio-muted uppercase tracking-widest font-mono">Prisma OS</div>
+                 <div className="text-[10px] text-studio-muted uppercase tracking-widest font-mono">SEU MUNDO AQUI</div>
              </div>
         </header>
         <div className="flex-1 overflow-hidden p-0 md:p-6">
